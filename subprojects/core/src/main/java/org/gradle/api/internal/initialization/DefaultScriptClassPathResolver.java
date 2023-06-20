@@ -35,6 +35,7 @@ import org.gradle.api.internal.model.NamedObjectInstantiator;
 import org.gradle.internal.classpath.CachedClasspathTransformer;
 import org.gradle.internal.classpath.ClassPath;
 import org.gradle.internal.classpath.DefaultClassPath;
+import org.gradle.internal.classpath.TransformedClassPath;
 import org.gradle.internal.component.local.model.OpaqueComponentIdentifier;
 import org.gradle.internal.logging.util.Log4jBannedVersion;
 import org.gradle.util.GradleVersion;
@@ -87,7 +88,7 @@ public class DefaultScriptClassPathResolver implements ScriptClassPathResolver {
         }
 
         ArtifactView instrumentedView = getInstrumentedView(classpathConfiguration, dependencyHandler);
-        return classpathTransformer.transform(DefaultClassPath.of(instrumentedView.getFiles()), CachedClasspathTransformer.StandardTransform.None);
+        return TransformedClassPath.handleInstrumentingArtifactTransform(DefaultClassPath.of(instrumentedView.getFiles()));
     }
 
     private static ArtifactView getInstrumentedView(Configuration classpathConfiguration, DependencyHandler dependencyHandler) {

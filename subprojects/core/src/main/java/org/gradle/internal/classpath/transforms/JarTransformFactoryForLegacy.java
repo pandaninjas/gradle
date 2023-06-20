@@ -110,5 +110,10 @@ public class JarTransformFactoryForLegacy implements JarTransformFactory {
             LOGGER.debug("Archive '{}' rejected by policy. Skipping instrumentation.", source.getName());
             GFileUtils.copyFile(source, destination);
         }
+
+        @Override
+        public String decorateDestinationFileName(String rawDestinationName) {
+            return rawDestinationName;
+        }
     }
 }
