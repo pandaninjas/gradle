@@ -87,7 +87,7 @@ public class DefaultScriptClassPathResolver implements ScriptClassPathResolver {
         }
 
         ArtifactView instrumentedView = getInstrumentedView(classpathConfiguration, dependencyHandler);
-        return classpathTransformer.transform(DefaultClassPath.of(instrumentedView.getFiles()), CachedClasspathTransformer.StandardTransform.BuildLogic);
+        return classpathTransformer.transform(DefaultClassPath.of(instrumentedView.getFiles()), CachedClasspathTransformer.StandardTransform.None);
     }
 
     private static ArtifactView getInstrumentedView(Configuration classpathConfiguration, DependencyHandler dependencyHandler) {
