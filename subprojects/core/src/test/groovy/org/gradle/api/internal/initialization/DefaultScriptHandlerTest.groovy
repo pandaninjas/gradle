@@ -77,7 +77,7 @@ class DefaultScriptHandlerTest extends Specification {
 
         then:
         0 * configuration._
-        1 * classpathResolver.resolveClassPath(null) >> ClassPath.EMPTY
+        1 * classpathResolver.resolveClassPath(null, dependencyHandler) >> ClassPath.EMPTY
 
         and:
         classpath == ClassPath.EMPTY
@@ -98,7 +98,7 @@ class DefaultScriptHandlerTest extends Specification {
         1 * depMgmtServices.dependencyHandler >> dependencyHandler
         1 * configurationContainer.migratingUnlocked('classpath', ConfigurationRolesForMigration.LEGACY_TO_RESOLVABLE_DEPENDENCY_SCOPE) >> configuration
         1 * classpathResolver.prepareClassPath(configuration, dependencyHandler)
-        1 * classpathResolver.resolveClassPath(configuration) >> classpath
+        1 * classpathResolver.resolveClassPath(configuration, dependencyHandler) >> classpath
     }
 
     def "script classpath queries runtime classpath"() {

@@ -23,6 +23,9 @@ import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.dsl.DependencyLockingHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
+import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
+import org.gradle.api.attributes.LibraryElements;
+import org.gradle.api.attributes.Usage;
 import org.gradle.api.initialization.dsl.ScriptHandler;
 import org.gradle.api.internal.artifacts.DependencyResolutionServices;
 import org.gradle.api.internal.artifacts.JavaEcosystemSupport;
@@ -30,6 +33,7 @@ import org.gradle.api.internal.artifacts.configurations.ConfigurationRolesForMig
 import org.gradle.api.internal.artifacts.configurations.RoleBasedConfigurationContainerInternal;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.groovy.scripts.ScriptSource;
 import org.gradle.internal.classloader.ClasspathUtil;
 import org.gradle.internal.classpath.ClassPath;
@@ -91,7 +95,7 @@ public class DefaultScriptHandler implements ScriptHandler, ScriptHandlerInterna
     @Override
     public ClassPath getInstrumentedScriptClassPath() {
         if (resolvedClasspath == null) {
-            resolvedClasspath = scriptClassPathResolver.resolveClassPath(classpathConfiguration);
+            resolvedClasspath = scriptClassPathResolver.resolveClassPath(classpathConfiguration, dependencyHandler);
             if (!System.getProperty(DISABLE_RESET_CONFIGURATION_SYSTEM_PROPERTY, "false").equals("true") && classpathConfiguration != null) {
                 ((ResettableConfiguration) classpathConfiguration).resetResolutionState();
             }
@@ -141,11 +145,23 @@ public class DefaultScriptHandler implements ScriptHandler, ScriptHandlerInterna
         }
         if (dependencyHandler == null) {
             dependencyHandler = dependencyResolutionServices.getDependencyHandler();
+            configureDependencyHandler(dependencyHandler, dependencyResolutionServices.getObjectFactory());
         }
         if (classpathConfiguration == null) {
             classpathConfiguration = configContainer.migratingUnlocked(CLASSPATH_CONFIGURATION, ConfigurationRolesForMigration.LEGACY_TO_RESOLVABLE_DEPENDENCY_SCOPE);
             scriptClassPathResolver.prepareClassPath(classpathConfiguration, dependencyHandler);
         }
+    }
+
+    @SuppressWarnings("CommentedOutCode")
+    private static void configureDependencyHandler(DependencyHandler dependencyHandler, ObjectFactory objectFactory) {
+        // TODO: When we call JavaEcosystemSupport.configureSchema we get `> Attribute 'org.gradle.category' precedence has already been set.`
+        //  Should we be calling this here?
+        // AttributesSchema attributesSchema = dependencyHandler.getAttributesSchema();
+        // JavaEcosystemSupport.configureSchema(attributesSchema, objectFactory);
+        dependencyHandler.getArtifactTypes().create(ArtifactTypeDefinition.JAR_TYPE).getAttributes()
+            .attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME))
+            .attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
     }
 
     @Override

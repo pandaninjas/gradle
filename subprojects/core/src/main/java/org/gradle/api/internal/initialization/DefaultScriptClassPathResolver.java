@@ -15,10 +15,12 @@
  */
 package org.gradle.api.internal.initialization;
 
+import org.gradle.api.Action;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.artifacts.ArtifactView;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
+import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
@@ -27,6 +29,8 @@ import org.gradle.api.attributes.Usage;
 import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.attributes.plugin.GradlePluginApiVersion;
 import org.gradle.api.internal.artifacts.dsl.dependencies.DependencyFactoryInternal;
+import org.gradle.api.internal.initialization.transform.CollectDirectClassSuperTypesTransform;
+import org.gradle.api.internal.initialization.transform.InstrumentArtifactTransform;
 import org.gradle.api.internal.model.NamedObjectInstantiator;
 import org.gradle.internal.classpath.CachedClasspathTransformer;
 import org.gradle.internal.classpath.ClassPath;
@@ -38,6 +42,9 @@ import org.gradle.util.GradleVersion;
 import java.util.List;
 
 public class DefaultScriptClassPathResolver implements ScriptClassPathResolver {
+
+    private static final Attribute<Boolean> HIERARCHY_COLLECTED_ATTRIBUTE = Attribute.of("hierarchy-collected", Boolean.class);
+    private static final Attribute<Boolean> INSTRUMENTED_ATTRIBUTE = Attribute.of("instrumented", Boolean.class);
     private final List<ScriptClassPathInitializer> initializers;
     private final NamedObjectInstantiator instantiator;
     private final CachedClasspathTransformer classpathTransformer;
@@ -64,17 +71,58 @@ public class DefaultScriptClassPathResolver implements ScriptClassPathResolver {
             version.require(Log4jBannedVersion.LOG4J2_CORE_REQUIRED_VERSION);
             version.reject(Log4jBannedVersion.LOG4J2_CORE_VULNERABLE_VERSION_RANGE);
         })));
+
+        dependencyHandler.getArtifactTypes().getByName("jar").getAttributes()
+            .attribute(INSTRUMENTED_ATTRIBUTE, false)
+            .attribute(HIERARCHY_COLLECTED_ATTRIBUTE, false);
     }
 
     @Override
-    public ClassPath resolveClassPath(Configuration classpathConfiguration) {
+    public ClassPath resolveClassPath(Configuration classpathConfiguration, DependencyHandler dependencyHandler) {
         if (classpathConfiguration == null) {
             return ClassPath.EMPTY;
         }
         for (ScriptClassPathInitializer initializer : initializers) {
             initializer.initialize(classpathConfiguration);
         }
-        ArtifactView view = classpathConfiguration.getIncoming().artifactView(config -> {
+
+        ArtifactView instrumentedView = getInstrumentedView(classpathConfiguration, dependencyHandler);
+        return classpathTransformer.transform(DefaultClassPath.of(instrumentedView.getFiles()), CachedClasspathTransformer.StandardTransform.BuildLogic);
+    }
+
+    private static ArtifactView getInstrumentedView(Configuration classpathConfiguration, DependencyHandler dependencyHandler) {
+        dependencyHandler.registerTransform(
+            CollectDirectClassSuperTypesTransform.class,
+            spec -> {
+                spec.getFrom().attribute(INSTRUMENTED_ATTRIBUTE, false);
+                spec.getTo().attribute(INSTRUMENTED_ATTRIBUTE, true);
+            }
+        );
+
+        ArtifactView hierarchyCollectedView = artifactView(classpathConfiguration, config -> config.attributes(it -> it.attribute(HIERARCHY_COLLECTED_ATTRIBUTE, true)));
+        dependencyHandler.registerTransform(
+            CollectDirectClassSuperTypesTransform.class,
+            spec -> {
+                spec.getFrom().attribute(HIERARCHY_COLLECTED_ATTRIBUTE, false);
+                spec.getTo().attribute(HIERARCHY_COLLECTED_ATTRIBUTE, true);
+            }
+        );
+
+        dependencyHandler.registerTransform(
+            InstrumentArtifactTransform.class,
+            spec -> {
+                spec.getFrom().attribute(INSTRUMENTED_ATTRIBUTE, false);
+                spec.getTo().attribute(INSTRUMENTED_ATTRIBUTE, true);
+                spec.parameters(parameters -> parameters.getClassHierarchy().setFrom(hierarchyCollectedView.getFiles()));
+            }
+        );
+
+        return artifactView(classpathConfiguration, config -> config.attributes(attributes -> attributes.attribute(INSTRUMENTED_ATTRIBUTE, true)));
+    }
+
+    private static ArtifactView artifactView(Configuration configuration, Action<? super ArtifactView.ViewConfiguration> configAction) {
+        return configuration.getIncoming().artifactView(config -> {
+            configAction.execute(config);
             config.componentFilter(componentId -> {
                 if (componentId instanceof OpaqueComponentIdentifier) {
                     DependencyFactoryInternal.ClassPathNotation classPathNotation = ((OpaqueComponentIdentifier) componentId).getClassPathNotation();
@@ -83,6 +131,5 @@ public class DefaultScriptClassPathResolver implements ScriptClassPathResolver {
                 return true;
             });
         });
-        return classpathTransformer.transform(DefaultClassPath.of(view.getFiles()), CachedClasspathTransformer.StandardTransform.BuildLogic);
     }
 }
