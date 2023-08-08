@@ -82,6 +82,7 @@ import org.gradle.api.services.internal.BuildServiceProvider;
 import org.gradle.api.services.internal.BuildServiceProviderNagger;
 import org.gradle.api.services.internal.DefaultBuildServicesRegistry;
 import org.gradle.cache.FileLockManager;
+import org.gradle.cache.GlobalCacheLocations;
 import org.gradle.cache.UnscopedCacheBuilderFactory;
 import org.gradle.cache.internal.BuildScopeCacheDir;
 import org.gradle.cache.internal.scopes.DefaultBuildScopedCacheBuilderFactory;
@@ -490,7 +491,9 @@ public class BuildScopeServices extends DefaultServiceRegistry {
             get(CompileOperationFactory.class));
     }
 
-    protected BuildSourceBuilder createBuildSourceBuilder(BuildState currentBuild, FileLockManager fileLockManager, BuildOperationExecutor buildOperationExecutor, CachedClasspathTransformer cachedClasspathTransformer, CachingServiceLocator cachingServiceLocator, BuildStateRegistry buildRegistry, PublicBuildPath publicBuildPath, NamedObjectInstantiator instantiator) {
+    protected BuildSourceBuilder createBuildSourceBuilder(BuildState currentBuild, FileLockManager fileLockManager, BuildOperationExecutor buildOperationExecutor, CachedClasspathTransformer cachedClasspathTransformer,
+                                                          CachingServiceLocator cachingServiceLocator, BuildStateRegistry buildRegistry, PublicBuildPath publicBuildPath, NamedObjectInstantiator instantiator, GlobalCacheLocations globalCacheLocations
+    ) {
         return new BuildSourceBuilder(
             currentBuild,
             fileLockManager,
@@ -500,7 +503,8 @@ public class BuildScopeServices extends DefaultServiceRegistry {
                     BuildSrcProjectConfigurationAction.class,
                     cachingServiceLocator),
                 instantiator,
-                cachedClasspathTransformer),
+                cachedClasspathTransformer,
+                globalCacheLocations),
             buildRegistry,
             publicBuildPath);
     }

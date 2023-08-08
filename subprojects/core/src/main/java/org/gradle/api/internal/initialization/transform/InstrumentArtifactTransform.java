@@ -32,6 +32,7 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.internal.Pair;
@@ -42,6 +43,8 @@ import org.gradle.internal.classpath.InstrumentingTransformer;
 import org.gradle.internal.classpath.TransformedClassPath;
 import org.gradle.internal.classpath.types.InstrumentingTypeRegistry;
 import org.gradle.internal.file.FileException;
+import org.gradle.internal.file.FileHierarchySet;
+import org.gradle.util.internal.GFileUtils;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -64,6 +67,9 @@ public abstract class InstrumentArtifactTransform implements TransformAction<Ins
         @InputFiles
         @PathSensitive(PathSensitivity.NAME_ONLY)
         ConfigurableFileCollection getClassHierarchy();
+
+        @Internal
+        ConfigurableFileCollection getGlobalCacheLocations();
     }
 
     @InputArtifact
@@ -79,7 +85,16 @@ public abstract class InstrumentArtifactTransform implements TransformAction<Ins
         // TransformedClassPath.handleInstrumentingArtifactTransform depends on the order and this naming, we should make it more resilient in the future
         String instrumentedJarName = getInput().get().getAsFile().getName().replaceFirst("\\.jar$", TransformedClassPath.INSTRUMENTED_JAR_EXTENSION);
         File outputFile = outputs.file(instrumentedJarName);
-        outputs.file(getInput());
+        FileHierarchySet globalCacheSet = FileHierarchySet.empty();
+        for (File file : getParameters().getGlobalCacheLocations()) {
+            globalCacheSet = globalCacheSet.plus(file);
+        }
+        if (globalCacheSet.contains(getInputAsFile().getAbsolutePath())) {
+            outputs.file(getInput());
+        } else {
+            File originalFile = outputs.file(getInputAsFile().getName());
+            GFileUtils.copyFile(getInputAsFile(), originalFile);
+        }
 
         InstrumentingTransformer transformer = new InstrumentingTransformer();
         File jarFile = getInputAsFile();
