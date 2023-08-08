@@ -33,6 +33,7 @@ import org.gradle.api.internal.initialization.transform.CollectDirectClassSuperT
 import org.gradle.api.internal.initialization.transform.InstrumentArtifactTransform;
 import org.gradle.api.internal.model.NamedObjectInstantiator;
 import org.gradle.internal.classpath.CachedClasspathTransformer;
+import org.gradle.internal.classpath.CachedClasspathTransformer.StandardTransform;
 import org.gradle.internal.classpath.ClassPath;
 import org.gradle.internal.classpath.DefaultClassPath;
 import org.gradle.internal.classpath.TransformedClassPath;
@@ -88,7 +89,8 @@ public class DefaultScriptClassPathResolver implements ScriptClassPathResolver {
         }
 
         ArtifactView instrumentedView = getInstrumentedView(classpathConfiguration, dependencyHandler);
-        return TransformedClassPath.handleInstrumentingArtifactTransform(DefaultClassPath.of(instrumentedView.getFiles()));
+        ClassPath instrumentedClasspath = classpathTransformer.transform(DefaultClassPath.of(instrumentedView.getFiles()), StandardTransform.None);
+        return TransformedClassPath.handleInstrumentingArtifactTransform(instrumentedClasspath);
     }
 
     private static ArtifactView getInstrumentedView(Configuration classpathConfiguration, DependencyHandler dependencyHandler) {
