@@ -17,6 +17,7 @@
 package org.gradle.api.internal.initialization.transform;
 
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
+import org.gradle.api.artifacts.transform.CacheableTransform;
 import org.gradle.api.artifacts.transform.InputArtifact;
 import org.gradle.api.artifacts.transform.TransformAction;
 import org.gradle.api.artifacts.transform.TransformOutputs;
@@ -27,6 +28,8 @@ import org.gradle.api.file.RelativePath;
 import org.gradle.api.internal.file.archive.ZipEntry;
 import org.gradle.api.internal.file.archive.ZipInput;
 import org.gradle.api.internal.file.archive.impl.FileZipInput;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.PathSensitive;
@@ -36,7 +39,9 @@ import org.gradle.internal.classpath.ClassData;
 import org.gradle.internal.classpath.ClasspathBuilder;
 import org.gradle.internal.classpath.ClasspathWalker;
 import org.gradle.internal.classpath.InstrumentingTransformer;
+import org.gradle.internal.classpath.TransformedClassPath;
 import org.gradle.internal.classpath.types.InstrumentingTypeRegistry;
+import org.gradle.internal.file.FileException;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -44,17 +49,20 @@ import org.objectweb.asm.ClassWriter;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 
 import static org.gradle.api.internal.initialization.transform.InstrumentArtifactTransform.InstrumentArtifactTransformParameters;
 
+@CacheableTransform
 public abstract class InstrumentArtifactTransform implements TransformAction<InstrumentArtifactTransformParameters> {
+
+    private static final Logger LOGGER = Logging.getLogger(InstrumentArtifactTransform.class);
 
     private static final int BUFFER_SIZE = 8192;
 
     public interface InstrumentArtifactTransformParameters extends TransformParameters {
         @InputFiles
+        @PathSensitive(PathSensitivity.NAME_ONLY)
         ConfigurableFileCollection getClassHierarchy();
     }
 
@@ -68,7 +76,10 @@ public abstract class InstrumentArtifactTransform implements TransformAction<Ins
 
     @Override
     public void transform(TransformOutputs outputs) {
-        File outputFile = outputs.file(getInput().get().getAsFile().getName() + "-instrumented.jar");
+        // TransformedClassPath.handleInstrumentingArtifactTransform depends on the order and this naming, we should make it more resilient in the future
+        String instrumentedJarName = getInput().get().getAsFile().getName().replaceFirst("\\.jar$", TransformedClassPath.INSTRUMENTED_JAR_EXTENSION);
+        File outputFile = outputs.file(instrumentedJarName);
+        outputs.file(getInput());
 
         InstrumentingTransformer transformer = new InstrumentingTransformer();
         File jarFile = getInputAsFile();
@@ -92,8 +103,9 @@ public abstract class InstrumentArtifactTransform implements TransformAction<Ins
                     new ClasspathBuilder.ZipEntryBuilder(outputStream).put(chain.left.getPathString(), bytes, classEntry.getCompressionMethod());
                 }
             }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+        } catch (FileException | IOException e) {
+            // Badly formed archive, so discard the contents and produce an empty JAR
+            LOGGER.warn("Malformed archive '{}'. Discarding contents.", getInputAsFile().getName(), e);
         }
     }
 }

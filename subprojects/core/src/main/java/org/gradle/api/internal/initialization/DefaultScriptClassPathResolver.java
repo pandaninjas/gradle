@@ -95,19 +95,11 @@ public class DefaultScriptClassPathResolver implements ScriptClassPathResolver {
         dependencyHandler.registerTransform(
             CollectDirectClassSuperTypesTransform.class,
             spec -> {
-                spec.getFrom().attribute(INSTRUMENTED_ATTRIBUTE, false);
-                spec.getTo().attribute(INSTRUMENTED_ATTRIBUTE, true);
-            }
-        );
-
-        ArtifactView hierarchyCollectedView = artifactView(classpathConfiguration, config -> config.attributes(it -> it.attribute(HIERARCHY_COLLECTED_ATTRIBUTE, true)));
-        dependencyHandler.registerTransform(
-            CollectDirectClassSuperTypesTransform.class,
-            spec -> {
                 spec.getFrom().attribute(HIERARCHY_COLLECTED_ATTRIBUTE, false);
                 spec.getTo().attribute(HIERARCHY_COLLECTED_ATTRIBUTE, true);
             }
         );
+        ArtifactView hierarchyCollectedView = artifactView(classpathConfiguration, config -> config.attributes(it -> it.attribute(HIERARCHY_COLLECTED_ATTRIBUTE, true)));
 
         dependencyHandler.registerTransform(
             InstrumentArtifactTransform.class,
