@@ -120,7 +120,9 @@ public abstract class InstrumentArtifactTransform implements TransformAction<Ins
             }
         } catch (FileException | IOException e) {
             // Badly formed archive, so discard the contents and produce an empty JAR
-            LOGGER.warn("Malformed archive '{}'. Discarding contents.", getInputAsFile().getName(), e);
+            LOGGER.debug("Malformed archive '{}'. Discarding contents.", getInputAsFile().getName(), e);
+            // TODO: This works a bit differently as in the original code, we should check if this is correct
+            GFileUtils.copyFile(getInputAsFile(), outputFile);
         }
     }
 }
