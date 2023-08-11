@@ -60,6 +60,7 @@ public class DefaultScriptHandler implements ScriptHandler, ScriptHandlerInterna
     private final ScriptClassPathResolver scriptClassPathResolver;
     private final DependencyResolutionServices dependencyResolutionServices;
     private final DependencyLockingHandler dependencyLockingHandler;
+    private final ObjectFactory objectFactory;
     // The following values are relatively expensive to create, so defer creation until required
     private ClassPath resolvedClasspath;
     private RepositoryHandler repositoryHandler;
@@ -74,7 +75,8 @@ public class DefaultScriptHandler implements ScriptHandler, ScriptHandlerInterna
         this.classLoaderScope = classLoaderScope;
         this.scriptClassPathResolver = scriptClassPathResolver;
         this.dependencyLockingHandler = dependencyResolutionServices.getDependencyLockingHandler();
-        JavaEcosystemSupport.configureSchema(dependencyResolutionServices.getAttributesSchema(), dependencyResolutionServices.getObjectFactory());
+        this.objectFactory = dependencyResolutionServices.getObjectFactory();
+        JavaEcosystemSupport.configureSchema(dependencyResolutionServices.getAttributesSchema(), objectFactory);
     }
 
     @Override
@@ -145,7 +147,7 @@ public class DefaultScriptHandler implements ScriptHandler, ScriptHandlerInterna
         }
         if (dependencyHandler == null) {
             dependencyHandler = dependencyResolutionServices.getDependencyHandler();
-            configureDependencyHandler(dependencyHandler, dependencyResolutionServices.getObjectFactory());
+            configureDependencyHandler(dependencyHandler, objectFactory);
         }
         if (classpathConfiguration == null) {
             classpathConfiguration = configContainer.migratingUnlocked(CLASSPATH_CONFIGURATION, ConfigurationRolesForMigration.LEGACY_TO_RESOLVABLE_DEPENDENCY_SCOPE);
@@ -153,12 +155,8 @@ public class DefaultScriptHandler implements ScriptHandler, ScriptHandlerInterna
         }
     }
 
-    @SuppressWarnings("CommentedOutCode")
     private static void configureDependencyHandler(DependencyHandler dependencyHandler, ObjectFactory objectFactory) {
-        // TODO: When we call JavaEcosystemSupport.configureSchema we get `> Attribute 'org.gradle.category' precedence has already been set.`
-        //  Should we be calling this here?
-        // AttributesSchema attributesSchema = dependencyHandler.getAttributesSchema();
-        // JavaEcosystemSupport.configureSchema(attributesSchema, objectFactory);
+        // TODO: JavaEcosystemSupport.configureSchema is called in the constructor, should we move it here?
         dependencyHandler.getArtifactTypes().create(ArtifactTypeDefinition.JAR_TYPE).getAttributes()
             .attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME))
             .attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
