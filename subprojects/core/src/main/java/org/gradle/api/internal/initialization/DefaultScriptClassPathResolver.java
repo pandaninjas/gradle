@@ -32,7 +32,6 @@ import org.gradle.api.internal.artifacts.dsl.dependencies.DependencyFactoryInter
 import org.gradle.api.internal.initialization.transform.CollectDirectClassSuperTypesTransform;
 import org.gradle.api.internal.initialization.transform.InstrumentArtifactTransform;
 import org.gradle.api.internal.model.NamedObjectInstantiator;
-import org.gradle.cache.GlobalCacheLocations;
 import org.gradle.internal.classpath.CachedClasspathTransformer;
 import org.gradle.internal.classpath.ClassPath;
 import org.gradle.internal.classpath.DefaultClassPath;
@@ -50,13 +49,11 @@ public class DefaultScriptClassPathResolver implements ScriptClassPathResolver {
     private final List<ScriptClassPathInitializer> initializers;
     private final NamedObjectInstantiator instantiator;
     private final CachedClasspathTransformer classpathTransformer;
-    private final GlobalCacheLocations globalCacheLocations;
 
-    public DefaultScriptClassPathResolver(List<ScriptClassPathInitializer> initializers, NamedObjectInstantiator instantiator, CachedClasspathTransformer classpathTransformer, GlobalCacheLocations globalCacheLocations) {
+    public DefaultScriptClassPathResolver(List<ScriptClassPathInitializer> initializers, NamedObjectInstantiator instantiator, CachedClasspathTransformer classpathTransformer) {
         this.initializers = initializers;
         this.instantiator = instantiator;
         this.classpathTransformer = classpathTransformer;
-        this.globalCacheLocations = globalCacheLocations;
     }
 
     @Override
@@ -90,11 +87,11 @@ public class DefaultScriptClassPathResolver implements ScriptClassPathResolver {
             initializer.initialize(classpathConfiguration);
         }
 
-        ArtifactView instrumentedView = getInstrumentedView(classpathConfiguration, dependencyHandler, globalCacheLocations);
+        ArtifactView instrumentedView = getInstrumentedView(classpathConfiguration, dependencyHandler);
         return TransformedClassPath.handleInstrumentingArtifactTransform(DefaultClassPath.of(instrumentedView.getFiles()));
     }
 
-    private static ArtifactView getInstrumentedView(Configuration classpathConfiguration, DependencyHandler dependencyHandler, GlobalCacheLocations globalCacheLocations) {
+    private static ArtifactView getInstrumentedView(Configuration classpathConfiguration, DependencyHandler dependencyHandler) {
         dependencyHandler.registerTransform(
             CollectDirectClassSuperTypesTransform.class,
             spec -> {

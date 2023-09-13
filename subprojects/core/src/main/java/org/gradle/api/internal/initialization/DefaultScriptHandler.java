@@ -24,8 +24,6 @@ import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.dsl.DependencyLockingHandler;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
-import org.gradle.api.attributes.LibraryElements;
-import org.gradle.api.attributes.Usage;
 import org.gradle.api.initialization.dsl.ScriptHandler;
 import org.gradle.api.internal.artifacts.DependencyResolutionServices;
 import org.gradle.api.internal.artifacts.JavaEcosystemSupport;
@@ -146,8 +144,7 @@ public class DefaultScriptHandler implements ScriptHandler, ScriptHandlerInterna
             configContainer = (RoleBasedConfigurationContainerInternal) dependencyResolutionServices.getConfigurationContainer();
         }
         if (dependencyHandler == null) {
-            dependencyHandler = dependencyResolutionServices.getDependencyHandler();
-            configureDependencyHandler(dependencyHandler, objectFactory);
+            dependencyHandler = getAndConfigureDependencyHandler(dependencyResolutionServices);
         }
         if (classpathConfiguration == null) {
             classpathConfiguration = configContainer.migratingUnlocked(CLASSPATH_CONFIGURATION, ConfigurationRolesForMigration.LEGACY_TO_RESOLVABLE_DEPENDENCY_SCOPE);
@@ -155,11 +152,11 @@ public class DefaultScriptHandler implements ScriptHandler, ScriptHandlerInterna
         }
     }
 
-    private static void configureDependencyHandler(DependencyHandler dependencyHandler, ObjectFactory objectFactory) {
+    private static DependencyHandler getAndConfigureDependencyHandler(DependencyResolutionServices dependencyResolutionServices) {
         // TODO: JavaEcosystemSupport.configureSchema is called in the constructor, should we move it here?
-        dependencyHandler.getArtifactTypes().create(ArtifactTypeDefinition.JAR_TYPE).getAttributes()
-            .attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME))
-            .attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
+        DependencyHandler dependencyHandler = dependencyResolutionServices.getDependencyHandler();
+        dependencyHandler.getArtifactTypes().create(ArtifactTypeDefinition.JAR_TYPE);
+        return dependencyHandler;
     }
 
     @Override

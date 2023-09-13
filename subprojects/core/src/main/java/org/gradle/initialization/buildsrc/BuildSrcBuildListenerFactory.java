@@ -26,7 +26,6 @@ import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.internal.project.ProjectState;
 import org.gradle.api.internal.tasks.TaskDependencyUtil;
 import org.gradle.api.invocation.Gradle;
-import org.gradle.cache.GlobalCacheLocations;
 import org.gradle.execution.EntryTaskSelector;
 import org.gradle.execution.plan.ExecutionPlan;
 import org.gradle.internal.InternalBuildAdapter;
@@ -42,17 +41,15 @@ public class BuildSrcBuildListenerFactory {
     private final Action<ProjectInternal> buildSrcRootProjectConfiguration;
     private final NamedObjectInstantiator instantiator;
     private final CachedClasspathTransformer classpathTransformer;
-    private final GlobalCacheLocations globalCacheLocations;
 
-    public BuildSrcBuildListenerFactory(Action<ProjectInternal> buildSrcRootProjectConfiguration, NamedObjectInstantiator instantiator, CachedClasspathTransformer classpathTransformer, GlobalCacheLocations globalCacheLocations) {
+    public BuildSrcBuildListenerFactory(Action<ProjectInternal> buildSrcRootProjectConfiguration, NamedObjectInstantiator instantiator, CachedClasspathTransformer classpathTransformer) {
         this.buildSrcRootProjectConfiguration = buildSrcRootProjectConfiguration;
         this.instantiator = instantiator;
         this.classpathTransformer = classpathTransformer;
-        this.globalCacheLocations = globalCacheLocations;
     }
 
     Listener create() {
-        return new Listener(buildSrcRootProjectConfiguration, instantiator, classpathTransformer, globalCacheLocations);
+        return new Listener(buildSrcRootProjectConfiguration, instantiator, classpathTransformer);
     }
 
     /**
@@ -65,9 +62,9 @@ public class BuildSrcBuildListenerFactory {
         private final Action<ProjectInternal> rootProjectConfiguration;
         private final ScriptClassPathResolver resolver;
 
-        private Listener(Action<ProjectInternal> rootProjectConfiguration, NamedObjectInstantiator instantiator, CachedClasspathTransformer classpathTransformer, GlobalCacheLocations globalCacheLocations) {
+        private Listener(Action<ProjectInternal> rootProjectConfiguration, NamedObjectInstantiator instantiator, CachedClasspathTransformer classpathTransformer) {
             this.rootProjectConfiguration = rootProjectConfiguration;
-            this.resolver = new DefaultScriptClassPathResolver(Collections.emptyList(), instantiator, classpathTransformer, globalCacheLocations);
+            this.resolver = new DefaultScriptClassPathResolver(Collections.emptyList(), instantiator, classpathTransformer);
         }
 
         @Override
