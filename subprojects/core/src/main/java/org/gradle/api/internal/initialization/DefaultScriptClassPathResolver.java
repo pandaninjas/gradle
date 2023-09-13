@@ -33,7 +33,6 @@ import org.gradle.api.internal.initialization.transform.CollectDirectClassSuperT
 import org.gradle.api.internal.initialization.transform.InstrumentArtifactTransform;
 import org.gradle.api.internal.model.NamedObjectInstantiator;
 import org.gradle.cache.GlobalCacheLocations;
-import org.gradle.cache.internal.DefaultGlobalCacheLocations;
 import org.gradle.internal.classpath.CachedClasspathTransformer;
 import org.gradle.internal.classpath.ClassPath;
 import org.gradle.internal.classpath.DefaultClassPath;
@@ -42,7 +41,6 @@ import org.gradle.internal.component.local.model.OpaqueComponentIdentifier;
 import org.gradle.internal.logging.util.Log4jBannedVersion;
 import org.gradle.util.GradleVersion;
 
-import java.io.File;
 import java.util.List;
 
 public class DefaultScriptClassPathResolver implements ScriptClassPathResolver {
