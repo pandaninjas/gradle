@@ -106,16 +106,12 @@ public class DefaultScriptClassPathResolver implements ScriptClassPathResolver {
         );
         ArtifactView hierarchyCollectedView = artifactView(classpathConfiguration, config -> config.attributes(it -> it.attribute(HIERARCHY_COLLECTED_ATTRIBUTE, true)));
 
-        List<File> roots = ((DefaultGlobalCacheLocations) globalCacheLocations).getGlobalCacheRoots();
         dependencyHandler.registerTransform(
             InstrumentArtifactTransform.class,
             spec -> {
                 spec.getFrom().attribute(INSTRUMENTED_ATTRIBUTE, false);
                 spec.getTo().attribute(INSTRUMENTED_ATTRIBUTE, true);
-                spec.parameters(parameters -> {
-                    parameters.getClassHierarchy().setFrom(hierarchyCollectedView.getFiles());
-                    parameters.getGlobalCacheLocations().setFrom(roots);
-                });
+                spec.parameters(parameters -> parameters.getClassHierarchy().setFrom(hierarchyCollectedView.getFiles()));
             }
         );
 

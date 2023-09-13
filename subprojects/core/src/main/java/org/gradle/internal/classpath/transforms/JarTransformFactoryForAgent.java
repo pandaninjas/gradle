@@ -23,6 +23,7 @@ import org.gradle.internal.hash.Hasher;
 import org.gradle.internal.service.scopes.Scopes;
 import org.gradle.internal.service.scopes.ServiceScope;
 
+import javax.inject.Inject;
 import java.io.File;
 
 @ServiceScope(Scopes.UserHome.class)
