@@ -78,8 +78,6 @@ unassigned {
     subproject("resources-s3")
     subproject("resources-sftp")
     subproject("plugins")
-    subproject("ide")
-    subproject("ide-native")
     subproject("maven")
     subproject("tooling-api")
     subproject("build-events")
@@ -129,7 +127,6 @@ unassigned {
     subproject("security")
     subproject("normalization-java")
     subproject("build-operations")
-    subproject("problems")
     subproject("instrumentation-agent")
     subproject("instrumentation-declarations")
 }
@@ -147,7 +144,10 @@ platform("core-configuration") {
 // IDE Platform
 platform("ide") {
     subproject("base-ide-plugins")
+    subproject("ide")
+    subproject("ide-native")
     subproject("ide-plugins")
+    subproject("problems")
 }
 
 // Software Platform
