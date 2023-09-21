@@ -102,21 +102,31 @@ public interface RoleBasedConfigurationContainerInternal extends ConfigurationCo
      */
     @Deprecated
     Configuration resolvableDependencyScopeUnlocked(String name, Action<? super Configuration> action);
+
     /**
      * If a configuration with the given name already exists, return it.
      * Otherwise, creates a new resolvable configuration with the given name.
+     *
+     * If a configuration with this name already exists this method will <strong>overwrite</strong> its current usage to match what
+     * would be set if the configuration needed to be created; it will emit an additional deprecation warning when doing this.
      */
     Configuration maybeCreateResolvableUnlocked(String name);
 
     /**
      * If a configuration with the given name already exists, return it.
      * Otherwise, creates a new consumable configuration with the given name.
+     *
+     * If a configuration with this name already exists this method will <strong>overwrite</strong> its current usage to match what
+     * would be set if the configuration needed to be created; it will emit an additional deprecation warning when doing this.
      */
     Configuration maybeCreateConsumableUnlocked(String name);
 
     /**
      * If a configuration with the given name already exists, return it.
      * Otherwise, creates a new dependency scope configuration with the given name.
+     *
+     * If a configuration with this name already exists this method will <strong>overwrite</strong> its current usage to match what
+     * would be set if the configuration needed to be created; it will emit an additional deprecation warning when doing this.
      */
     Configuration maybeCreateDependencyScopeUnlocked(String name);
 
@@ -126,6 +136,10 @@ public interface RoleBasedConfigurationContainerInternal extends ConfigurationCo
      *
      * <p>If {@code warnOnDuplicate} is false, the normal deprecation warning will not be emitted. Setting this to false
      * should be avoided except in edge cases where it may emit deprecation warnings affecting large third-party plugins.</p>
+     *
+     * If a configuration with this name already exists this method will <strong>overwrite</strong> its current usage to match what
+     * would be set if the configuration needed to be created and emit an additional deprecation warning when doing this
+     * <strong>IFF</strong> {@code warnOnDuplicate} is set to {@code true}.
      */
     Configuration maybeCreateDependencyScopeUnlocked(String name, boolean warnOnDuplicate);
 
@@ -134,6 +148,10 @@ public interface RoleBasedConfigurationContainerInternal extends ConfigurationCo
      * Otherwise, creates a new configuration with the given name.
      * Intended only for use with roles defined in {@link ConfigurationRolesForMigration}.
      *
+     * If a configuration with this name already exists this method will <strong>overwrite</strong> its current usage to match what
+     * would be set if the configuration needed to be created and emit an additional deprecation warning when doing this
+     * <strong>IFF</strong> {@code warnOnDuplicate} is set to {@code true}.
+     *
      * @throws org.gradle.api.InvalidUserDataException If a non-migration role is used.
      */
     Configuration maybeCreateMigratingUnlocked(String name, ConfigurationRole role);
@@ -141,6 +159,10 @@ public interface RoleBasedConfigurationContainerInternal extends ConfigurationCo
     /**
      * If a configuration with the given name already exists, return it.
      * Otherwise, creates a new resolvable + dependency scope configuration with the given name.
+     *
+     * If a configuration with this name already exists this method will <strong>overwrite</strong> its current usage to match what
+     * would be set if the configuration needed to be created and emit an additional deprecation warning when doing this
+     * <strong>IFF</strong> {@code warnOnDuplicate} is set to {@code true}.
      *
      * @deprecated Whether concept of a resolvable + dependency scope configuration should exist
      * is still under debate. However, in general, we should try to split up configurations which

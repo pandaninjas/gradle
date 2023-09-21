@@ -18,6 +18,7 @@ package org.gradle.api.internal.artifacts.configurations;
 import com.google.common.collect.ImmutableSet;
 import org.gradle.api.Action;
 import org.gradle.api.DomainObjectSet;
+import org.gradle.api.GradleException;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.UnknownDomainObjectException;
@@ -258,6 +259,7 @@ public class DefaultConfigurationContainer extends AbstractValidatingNamedDomain
         }
 
         emitConfigurationExistsDeprecation(name);
+        validateExistingUsageIsConsistent(name, ConfigurationRoles.RESOLVABLE);
         return getByName(name);
     }
 
@@ -268,6 +270,7 @@ public class DefaultConfigurationContainer extends AbstractValidatingNamedDomain
         }
 
         emitConfigurationExistsDeprecation(name);
+        validateExistingUsageIsConsistent(name, ConfigurationRoles.CONSUMABLE);
         return getByName(name);
     }
 
@@ -284,6 +287,7 @@ public class DefaultConfigurationContainer extends AbstractValidatingNamedDomain
 
         if (warnOnDuplicate) {
             emitConfigurationExistsDeprecation(name);
+            validateExistingUsageIsConsistent(name, ConfigurationRoles.DEPENDENCY_SCOPE);
         }
         return getByName(name);
     }
@@ -295,6 +299,7 @@ public class DefaultConfigurationContainer extends AbstractValidatingNamedDomain
         }
 
         emitConfigurationExistsDeprecation(name);
+        validateExistingUsageIsConsistent(name, role);
         return getByName(name);
     }
 
@@ -306,6 +311,7 @@ public class DefaultConfigurationContainer extends AbstractValidatingNamedDomain
         }
 
         emitConfigurationExistsDeprecation(name);
+        validateExistingUsageIsConsistent(name, ConfigurationRoles.RESOLVABLE_DEPENDENCY_SCOPE);
         return getByName(name);
     }
 
@@ -383,6 +389,53 @@ public class DefaultConfigurationContainer extends AbstractValidatingNamedDomain
                     .willBeRemovedInGradle9()
                     .withUpgradeGuideSection(8, "reserved_configuration_names")
                     .nagUser();
+        }
+    }
+
+    private void validateExistingUsageIsConsistent(String name, ConfigurationRole role) {
+        DefaultConfiguration conf = (DefaultConfiguration) getByName(name);
+        if (!role.isUsageConsistentWithRole(conf)) {
+            String currentUsageDesc = UsageDescriber.describeCurrentUsage(conf);
+            String expectedUsageDesc = UsageDescriber.describeRole(role);
+
+            String msgTemplate = "Configuration '%s' already exists with permitted usage(s):\n" +
+                "%s\n" +
+                "Yet Gradle expected to create it with the usage(s):\n" +
+                "%s\n" +
+                "Gradle will mutate the usage of this configuration to match the expected usage. This may cause unexpected behavior. Anticipating configuration creation";
+            String errorMsg = String.format(msgTemplate, name, currentUsageDesc, expectedUsageDesc);
+            DeprecationLogger.deprecate(errorMsg)
+                .withAdvice("Do not create a configuration with this name.")
+                .willBecomeAnErrorInGradle9()
+                .undocumented()
+                .nagUser();
+
+            if (conf.usageCanBeMutated()) {
+                setAllowedUsageFromRole(conf, role);
+            } else {
+                throw new GradleException(String.format("Gradle cannot mutate the usage of configuration '%s' because it is locked.", name));
+            }
+        }
+    }
+
+    /**
+     * Update a configuration's allowed and disallowed usage to match the given role
+     *
+     * This method does <strong>NOT</strong> warn.  This method does <strong>NOT</strong> modify deprecation status.  It
+     * is only meant to be called by the container.
+     *
+     * @param conf the configuration to update (should be {@code usageCanBeMutated() == true})
+     * @param role the role specifying the usage the conf should possess
+     */
+    private void setAllowedUsageFromRole(DefaultConfiguration conf, ConfigurationRole role) {
+        if (conf.isCanBeConsumed() != role.isConsumable()) {
+            conf.setCanBeConsumed(role.isConsumable(), false);
+        }
+        if (conf.isCanBeResolved() != role.isResolvable()) {
+            conf.setCanBeResolved(role.isResolvable(), false);
+        }
+        if (conf.isCanBeDeclared() != role.isDeclarable()) {
+            conf.setCanBeDeclared(role.isDeclarable(), false);
         }
     }
 }

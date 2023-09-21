@@ -16,6 +16,8 @@
 
 package org.gradle.integtests.resolve.api
 
+
+import org.gradle.api.internal.artifacts.configurations.ConfigurationRoles
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.ConfigurationUsageChangingFixture
 import org.gradle.integtests.fixtures.ToBeFixedForConfigurationCache
@@ -595,31 +597,31 @@ class ConfigurationRoleUsageIntegrationTest extends AbstractIntegrationSpec impl
 
         expect:
         executer.expectDocumentedDeprecationWarning("The configuration additionalRuntimeClasspath was created explicitly. This configuration name is reserved for creation by Gradle. This behavior has been deprecated. This behavior is scheduled to be removed in Gradle 9.0. Do not create a configuration with this name. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#configurations_allowed_usage")
-        succeeds "resolve"
+        executer.expectDeprecationWarning("Gradle will mutate the usage of this configuration to match the expected usage. This may cause unexpected behavior. Anticipating configuration creation has been deprecated. This will fail with an error in Gradle 9.0. Do not create a configuration with this name.")
+        if (canMutate) {
+            succeeds "resolve"
+        } else {
+            fails "resolve"
+            failure.assertHasErrorOutput("Gradle cannot mutate the usage of configuration 'additionalRuntimeClasspath' because it is locked.")
+        }
 
         where:
-        confCreationCode | description
+        confCreationCode | createdRole | canMutate | description
         """
             configurations {
                 additionalRuntimeClasspath
             }
-        """ | "legacy configuration with implicit allowed usage"
+        """                                                                             | ConfigurationRoles.LEGACY     | true      | "legacy configuration with implicit allowed usage"
         """
             configurations {
                 additionalRuntimeClasspath {
                     canBeConsumed = true
                 }
             }
-        """ | "legacy configuration with explicit set consumed = true"
-        """
-            configurations.consumable('additionalRuntimeClasspath')
-        """ | "role-based configuration"
-        """
-            configurations.consumableUnlocked('additionalRuntimeClasspath')
-        """ | "internal unlocked role-based configuration"
-        """
-            configurations.maybeCreateConsumableUnlocked('additionalRuntimeClasspath')
-        """ | "internal unlocked role-based configuration, if it doesn't already exist"
+        """                                                                             | ConfigurationRoles.LEGACY     | true      | "legacy configuration with explicit set consumed = true"
+        "configurations.consumable('additionalRuntimeClasspath')"                       | ConfigurationRoles.CONSUMABLE | false     | "role-based configuration"
+        "configurations.consumableUnlocked('additionalRuntimeClasspath')"               | ConfigurationRoles.CONSUMABLE | true      | "internal unlocked role-based configuration"
+        "configurations.maybeCreateConsumableUnlocked('additionalRuntimeClasspath')"    | ConfigurationRoles.CONSUMABLE | true      | "internal unlocked role-based configuration, if it doesn't already exist"
     }
 
     def "changing usage on detached configurations does not warn"() {
