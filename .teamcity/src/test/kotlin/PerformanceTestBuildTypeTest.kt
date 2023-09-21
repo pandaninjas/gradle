@@ -77,7 +77,7 @@ class PerformanceTestBuildTypeTest {
 
         assertEquals(
             listOf(
-                "KILL_GRADLE_PROCESSES",
+                "KILL_ALL_GRADLE_PROCESSES",
                 "GRADLE_RUNNER",
                 "CHECK_CLEAN_M2_ANDROID_USER_HOME"
             ),

@@ -18,6 +18,7 @@ package common
 
 import common.KillProcessMode.KILL_ALL_GRADLE_PROCESSES
 import configurations.CompileAll
+import configurations.FunctionalTest
 import configurations.branchesFilterExcluding
 import configurations.buildScanCustomValue
 import configurations.buildScanTag
@@ -279,17 +280,21 @@ enum class KillProcessMode {
     KILL_ALL_GRADLE_PROCESSES
 }
 
-fun BuildType.killProcessStep(mode: KillProcessMode, os: Os, arch: Arch = Arch.AMD64, executionMode: BuildStep.ExecutionMode = BuildStep.ExecutionMode.ALWAYS) {
-    steps {
-        script {
-            name = mode.toString()
-            this.executionMode = executionMode
-            scriptContent = "\"${javaHome(BuildToolBuildJvm, os, arch)}/bin/java\" build-logic/cleanup/src/main/java/gradlebuild/cleanup/services/KillLeakingJavaProcesses.java $mode"
-            skipConditionally(this@killProcessStep)
-            if (mode == KILL_ALL_GRADLE_PROCESSES) {
-                onlyRunOnPreTestedCommitBuildBranch()
-            }
+fun BuildSteps.killProcessStep(buildType: BuildType?, mode: KillProcessMode, os: Os, arch: Arch = Arch.AMD64, executionMode: BuildStep.ExecutionMode = BuildStep.ExecutionMode.DEFAULT) {
+    script {
+        name = mode.toString()
+        this.executionMode = executionMode
+        scriptContent = "\"${javaHome(BuildToolBuildJvm, os, arch)}/bin/java\" build-logic/cleanup/src/main/java/gradlebuild/cleanup/services/KillLeakingJavaProcesses.java $mode"
+        skipConditionally(buildType)
+        if (mode == KILL_ALL_GRADLE_PROCESSES && buildType is FunctionalTest) {
+            onlyRunOnPreTestedCommitBuildBranch()
         }
+    }
+}
+
+fun BuildType.killProcessStep(mode: KillProcessMode, os: Os, arch: Arch = Arch.AMD64, executionMode: BuildStep.ExecutionMode = BuildStep.ExecutionMode.DEFAULT) {
+    steps {
+        killProcessStep(this@killProcessStep, mode, os, arch, executionMode)
     }
 }
 
