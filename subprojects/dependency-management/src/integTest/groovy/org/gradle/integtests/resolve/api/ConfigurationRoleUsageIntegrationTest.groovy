@@ -19,6 +19,7 @@ package org.gradle.integtests.resolve.api
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.ConfigurationUsageChangingFixture
 import org.gradle.integtests.fixtures.ToBeFixedForConfigurationCache
+import spock.lang.Issue
 
 class ConfigurationRoleUsageIntegrationTest extends AbstractIntegrationSpec implements ConfigurationUsageChangingFixture {
     // region Roleless (Implicit LEGACY Role) Configurations
@@ -545,6 +546,80 @@ class ConfigurationRoleUsageIntegrationTest extends AbstractIntegrationSpec impl
         executer.expectDocumentedDeprecationWarning("The configuration customCompileOnly was created explicitly. This configuration name is reserved for creation by Gradle. This behavior has been deprecated. This behavior is scheduled to be removed in Gradle 9.0. Do not create a configuration with this name. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#configurations_allowed_usage")
         executer.expectDocumentedDeprecationWarning("The configuration implementation was created explicitly. This configuration name is reserved for creation by Gradle. This behavior has been deprecated. This behavior is scheduled to be removed in Gradle 9.0. Do not create a configuration with this name. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#configurations_allowed_usage")
         succeeds 'help'
+    }
+
+    @Issue("https://github.com/gradle/gradle/issues/26461")
+    def "when anticipating configurations to be created from sourcesets, their usage is reset (creation = #description)"() {
+        given:
+        settingsFile """
+            include 'resolver', 'producer'
+        """
+
+        file("resolver/build.gradle") << """
+            apply plugin: 'java-base'
+
+            configurations {
+                noAttributes
+            }
+
+            dependencies {
+                noAttributes project(":producer")
+            }
+
+            task resolve {
+                inputs.files(configurations.noAttributes)
+                doLast {
+                    /**
+                     * If additionalRuntimeClasspath in producer is consumable, it will
+                     * be selected instead of runtimeElements.  This ensures it does not
+                     * remain consumable after the sourceset is created.
+                     */
+                    assert configurations.noAttributes.files*.name == ['producer.jar']
+                }
+            }
+        """
+
+        file("producer/build.gradle") << """
+            apply plugin: 'java'
+
+            ${confCreationCode}
+
+            configurations.additionalRuntimeClasspath.outgoing {
+                artifact file('wrong-file.jar')
+            }
+
+            sourceSets {
+                additional
+            }
+        """
+
+        expect:
+        executer.expectDocumentedDeprecationWarning("The configuration additionalRuntimeClasspath was created explicitly. This configuration name is reserved for creation by Gradle. This behavior has been deprecated. This behavior is scheduled to be removed in Gradle 9.0. Do not create a configuration with this name. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#configurations_allowed_usage")
+        succeeds "resolve"
+
+        where:
+        confCreationCode | description
+        """
+            configurations {
+                additionalRuntimeClasspath
+            }
+        """ | "legacy configuration with implicit allowed usage"
+        """
+            configurations {
+                additionalRuntimeClasspath {
+                    canBeConsumed = true
+                }
+            }
+        """ | "legacy configuration with explicit set consumed = true"
+        """
+            configurations.consumable('additionalRuntimeClasspath')
+        """ | "role-based configuration"
+        """
+            configurations.consumableUnlocked('additionalRuntimeClasspath')
+        """ | "internal unlocked role-based configuration"
+        """
+            configurations.maybeCreateConsumableUnlocked('additionalRuntimeClasspath')
+        """ | "internal unlocked role-based configuration, if it doesn't already exist"
     }
 
     def "changing usage on detached configurations does not warn"() {
