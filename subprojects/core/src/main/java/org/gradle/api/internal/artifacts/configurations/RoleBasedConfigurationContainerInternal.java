@@ -20,6 +20,9 @@ import org.gradle.api.Action;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ConfigurationContainer;
 
+import javax.annotation.Nullable;
+import java.util.Optional;
+
 /**
  * Extends {@link ConfigurationContainer} to define internal-only methods for creating configurations.
  * All methods in this interface produce <strong>unlocked</strong> configurations, meaning they
@@ -170,4 +173,8 @@ public interface RoleBasedConfigurationContainerInternal extends ConfigurationCo
      */
     @Deprecated
     Configuration maybeCreateResolvableDependencyScopeUnlocked(String name);
+
+    Optional<String> getMaybeCreateContext();
+
+    void recordMaybeCreateContext(@Nullable String contextDescription);
 }

@@ -16,6 +16,7 @@
 package org.gradle.api.internal.artifacts.configurations;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import org.gradle.api.Action;
 import org.gradle.api.DomainObjectSet;
 import org.gradle.api.GradleException;
@@ -36,10 +37,15 @@ import org.gradle.internal.Actions;
 import org.gradle.internal.Cast;
 import org.gradle.internal.Factory;
 import org.gradle.internal.deprecation.DeprecationLogger;
+import org.gradle.internal.deprecation.DeprecationMessageBuilder;
+import org.gradle.internal.exceptions.ResolutionProvider;
 import org.gradle.internal.reflect.Instantiator;
 import org.gradle.util.GradleVersion;
 
 import javax.annotation.Nullable;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -55,6 +61,7 @@ public class DefaultConfigurationContainer extends AbstractValidatingNamedDomain
     private final Factory<ResolutionStrategyInternal> resolutionStrategyFactory;
     private final RootComponentMetadataBuilder rootComponentMetadataBuilder;
     private final DefaultConfigurationFactory defaultConfigurationFactory;
+    @Nullable private String maybeCreateContextDesc;
 
     public DefaultConfigurationContainer(
         Instantiator instantiator,
@@ -70,6 +77,16 @@ public class DefaultConfigurationContainer extends AbstractValidatingNamedDomain
         this.resolutionStrategyFactory = resolutionStrategyFactory;
         this.getEventRegister().registerLazyAddAction(x -> rootComponentMetadataBuilder.getValidator().validateMutation(MutationValidator.MutationType.HIERARCHY));
         this.whenObjectRemoved(x -> rootComponentMetadataBuilder.getValidator().validateMutation(MutationValidator.MutationType.HIERARCHY));
+    }
+
+    @Override
+    public Optional<String> getMaybeCreateContext() {
+        return Optional.ofNullable(maybeCreateContextDesc);
+    }
+
+    @Override
+    public void recordMaybeCreateContext(@Nullable String contextDescription) {
+        maybeCreateContextDesc = contextDescription;
     }
 
     @Override
@@ -358,25 +375,9 @@ public class DefaultConfigurationContainer extends AbstractValidatingNamedDomain
         return configuration;
     }
 
-    // Cannot be private due to reflective instantiation
-    public class NamedDomainObjectCreatingProvider<I extends Configuration> extends AbstractDomainObjectCreatingProvider<I> {
-
-        private final Function<String, I> factory;
-
-        public NamedDomainObjectCreatingProvider(String name, Class<I> type, @Nullable Action<? super I> configureAction, Function<String, I> factory) {
-            super(name, type, configureAction);
-            this.factory = factory;
-        }
-
-        @Override
-        protected I createDomainObject() {
-            return factory.apply(getName());
-        }
-    }
-
-    private static void emitConfigurationExistsDeprecation(String configurationName) {
-        DeprecationLogger.deprecateBehaviour("The configuration " + configurationName + " was created explicitly. This configuration name is reserved for creation by Gradle.")
-            .withAdvice("Do not create a configuration with this name.")
+    private static void emitConfigurationExistsDeprecation(String name) {
+        DeprecationLogger.deprecateBehaviour("The configuration " + name + " was created explicitly. This configuration name is reserved for creation by Gradle.")
+            .withAdvice(String.format("Do not create a configuration with the name %s.", name))
             .willBeRemovedInGradle9()
             .withUpgradeGuideSection(8, "configurations_allowed_usage")
             .nagUser();
@@ -398,22 +399,45 @@ public class DefaultConfigurationContainer extends AbstractValidatingNamedDomain
             String currentUsageDesc = UsageDescriber.describeCurrentUsage(conf);
             String expectedUsageDesc = UsageDescriber.describeRole(role);
 
-            String msgTemplate = "Configuration '%s' already exists with permitted usage(s):\n" +
+            boolean hasContext = getMaybeCreateContext().isPresent();
+            boolean hasSourceSetContext = hasContext && getMaybeCreateContext().get().contains("sourceSet");
+
+            String msgDiscovery;
+            if (hasContext) {
+                msgDiscovery = String.format("When creating configurations during %s, Gradle found that configuration %s already exists with permitted usage(s):\n" +
+                    "%s\n", getMaybeCreateContext().get(), name, currentUsageDesc);
+            } else {
+                msgDiscovery = String.format("Configuration %s already exists with permitted usage(s):\n" +
+                    "%s\n", name, currentUsageDesc);
+            }
+
+            String msgExpectation = String.format("Yet Gradle expected to create it with the usage(s):\n" +
                 "%s\n" +
-                "Yet Gradle expected to create it with the usage(s):\n" +
-                "%s\n" +
-                "Gradle will mutate the usage of this configuration to match the expected usage. This may cause unexpected behavior. Anticipating configuration creation";
-            String errorMsg = String.format(msgTemplate, name, currentUsageDesc, expectedUsageDesc);
-            DeprecationLogger.deprecate(errorMsg)
-                .withAdvice("Do not create a configuration with this name.")
-                .willBecomeAnErrorInGradle9()
-                .undocumented()
-                .nagUser();
+                "Gradle will mutate the usage of this configuration to match the expected usage. This may cause unexpected behavior. Creating configurations with reserved names", expectedUsageDesc);
+            String basicNameAdvice = String.format("Do not create a configuration with the name %s.", name);
+            String sourceSetAdvice = "Create sourceSets prior to creating or accessing the configurations associated with them.";
+
+            DeprecationMessageBuilder<?> builder = DeprecationLogger.deprecate(msgDiscovery + msgExpectation);
+            if (hasSourceSetContext) {
+                builder.withAdvice(sourceSetAdvice)
+                    .willBecomeAnErrorInGradle9()
+                    .withUserManual("building_java_projects", "sec:implicit_sourceset_configurations")
+                    .nagUser();
+            } else {
+                builder.withAdvice(basicNameAdvice)
+                    .willBecomeAnErrorInGradle9()
+                    .withUserManual("authoring_maintainable_build_scripts", "sec:dont_anticipate_configuration_creation")
+                    .nagUser();
+            }
 
             if (conf.usageCanBeMutated()) {
                 setAllowedUsageFromRole(conf, role);
             } else {
-                throw new GradleException(String.format("Gradle cannot mutate the usage of configuration '%s' because it is locked.", name));
+                List<String> resolutions = Lists.newArrayList(basicNameAdvice);
+                if (hasSourceSetContext) {
+                    resolutions.add(sourceSetAdvice);
+                }
+                throw new UnmodifiableConfigurationException(name, resolutions);
             }
         }
     }
@@ -436,6 +460,36 @@ public class DefaultConfigurationContainer extends AbstractValidatingNamedDomain
         }
         if (conf.isCanBeDeclared() != role.isDeclarable()) {
             conf.setCanBeDeclared(role.isDeclarable(), false);
+        }
+    }
+
+    public static class UnmodifiableConfigurationException extends GradleException implements ResolutionProvider {
+        private final List<String> resolutions;
+
+        public UnmodifiableConfigurationException(String configurationName, List<String> resolutions) {
+            super(String.format("Gradle cannot mutate the usage of configuration '%s' because it is locked.", configurationName));
+            this.resolutions = resolutions;
+        }
+
+        @Override
+        public List<String> getResolutions() {
+            return Collections.unmodifiableList(resolutions);
+        }
+    }
+
+    // Cannot be private due to reflective instantiation
+    public class NamedDomainObjectCreatingProvider<I extends Configuration> extends AbstractDomainObjectCreatingProvider<I> {
+
+        private final Function<String, I> factory;
+
+        public NamedDomainObjectCreatingProvider(String name, Class<I> type, @Nullable Action<? super I> configureAction, Function<String, I> factory) {
+            super(name, type, configureAction);
+            this.factory = factory;
+        }
+
+        @Override
+        protected I createDomainObject() {
+            return factory.apply(getName());
         }
     }
 }

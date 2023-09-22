@@ -596,8 +596,8 @@ class ConfigurationRoleUsageIntegrationTest extends AbstractIntegrationSpec impl
         """
 
         expect:
-        executer.expectDocumentedDeprecationWarning("The configuration additionalRuntimeClasspath was created explicitly. This configuration name is reserved for creation by Gradle. This behavior has been deprecated. This behavior is scheduled to be removed in Gradle 9.0. Do not create a configuration with this name. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#configurations_allowed_usage")
-        executer.expectDeprecationWarning("Gradle will mutate the usage of this configuration to match the expected usage. This may cause unexpected behavior. Anticipating configuration creation has been deprecated. This will fail with an error in Gradle 9.0. Do not create a configuration with this name.")
+        executer.expectDocumentedDeprecationWarning("The configuration additionalRuntimeClasspath was created explicitly. This configuration name is reserved for creation by Gradle. This behavior has been deprecated. This behavior is scheduled to be removed in Gradle 9.0. Do not create a configuration with the name additionalRuntimeClasspath. Consult the upgrading guide for further information: https://docs.gradle.org/current/userguide/upgrading_version_8.html#configurations_allowed_usage")
+        executer.expectDocumentedDeprecationWarning("Gradle will mutate the usage of this configuration to match the expected usage. This may cause unexpected behavior. Creating configurations with reserved names has been deprecated. This will fail with an error in Gradle 9.0. Create sourceSets prior to creating or accessing the configurations associated with them. For more information, please refer to https://docs.gradle.org/current/userguide/building_java_projects.html#sec:implicitly_reserved_configuration_names in the Gradle documentation.")
         if (canMutate) {
             succeeds "resolve"
         } else {
