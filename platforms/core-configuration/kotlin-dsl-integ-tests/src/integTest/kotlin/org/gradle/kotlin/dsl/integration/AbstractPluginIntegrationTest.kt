@@ -21,5 +21,6 @@ import org.gradle.kotlin.dsl.fixtures.AbstractPluginTest
 
 /**
  * Base class for tests that require plugins from `:plugins`.
+ * // TODO REMOVE THIS USELESS CLASS
  */
 open class AbstractPluginIntegrationTest : AbstractPluginTest()

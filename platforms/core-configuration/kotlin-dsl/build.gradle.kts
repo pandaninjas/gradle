@@ -99,6 +99,9 @@ dependencies {
         because("SimplifiedKotlinScriptEvaluator reads default imports from the distribution (default-imports.txt) and BuildType from platform-native is used in ProjectAccessorsClassPathTest.")
     }
 
+    integTestRuntimeOnly(project(":kotlin-dsl-plugins"))
+    integTestLocalRepository(project(":kotlin-dsl-plugins"))
+
     testFixturesImplementation(project(":base-services"))
     testFixturesImplementation(project(":core-api"))
     testFixturesImplementation(project(":core"))

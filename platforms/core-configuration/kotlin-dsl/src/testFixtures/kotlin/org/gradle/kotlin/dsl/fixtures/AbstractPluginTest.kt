@@ -10,6 +10,7 @@ import java.util.Properties
 /**
  * Base class for Gradle plugins tests.
  * You must apply the `kotlin-dsl-plugin-bundle` plugin for this to work.
+ * TODO DOC ABOVE IS WRONG, FIX IT!
  */
 open class AbstractPluginTest : AbstractKotlinIntegrationTest() {
 

@@ -78,10 +78,12 @@ abstract class AbstractKotlinIntegrationTest : AbstractIntegrationTest() {
     fun withDefaultSettingsIn(baseDir: String) =
         withSettingsIn(baseDir, defaultSettingsScript)
 
+    // BAD BAD BAD
     protected
     fun withSettings(script: String, produceFile: (String) -> File = ::newFile): File =
         withSettingsIn(".", script, produceFile)
 
+    // BAD BAD BAD
     protected
     fun withSettingsIn(baseDir: String, script: String, produceFile: (String) -> File = ::newFile): File =
         withFile("$baseDir/settings.gradle.kts", script, produceFile)
