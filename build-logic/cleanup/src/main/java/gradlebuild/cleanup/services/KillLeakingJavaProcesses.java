@@ -98,7 +98,7 @@ public class KillLeakingJavaProcesses {
 
         File rootProjectDir = new File(System.getProperty("user.dir"));
 
-        cleanPsOutputFilesFromPreviousRun(rootProjectDir);
+        cleanPsOutputAndThreaddumpFilesFromPreviousRun(rootProjectDir);
 
         List<String> psOutput = ps(rootProjectDir);
 
@@ -141,9 +141,9 @@ public class KillLeakingJavaProcesses {
         }
     }
 
-    private static void cleanPsOutputFilesFromPreviousRun(File rootProjectDir) {
+    private static void cleanPsOutputAndThreaddumpFilesFromPreviousRun(File rootProjectDir) {
         if (executionMode == ExecutionMode.KILL_LEAKED_PROCESSES_FROM_PREVIOUS_BUILDS) {
-            File[] psOutputs = rootProjectDir.listFiles((__, name) -> name.endsWith(".psoutput"));
+            File[] psOutputs = rootProjectDir.listFiles((__, name) -> name.endsWith(".psoutput") || name.endsWith(".threaddump"));
             if (psOutputs != null) {
                 Stream.of(psOutputs).forEach(File::delete);
             }
